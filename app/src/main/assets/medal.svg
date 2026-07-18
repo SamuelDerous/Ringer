@@ -1,0 +1,12 @@
+<svg height="160" viewBox="0 0 120 160" width="120" xmlns="http://www.w3.org/2000/svg">
+    <!-- Lint -->
+    <path d="M40,0 L50,50 L70,50 L80,0 Z" fill="#FF0000"></path>
+    <path d="M40,0 L30,50 L50,50 L40,0 Z" fill="#0000FF"></path>
+
+    <!-- Medaille cirkel -->
+    <circle cx="60" cy="100" fill="gold" r="40" stroke="orange" stroke-width="5"></circle>
+
+    <!-- Ster / logo in het midden -->
+    <polygon fill="white"
+        points="60,70 66,90 88,90 70,105 76,130 60,115 44,130 50,105 32,90 54,90"></polygon>
+</svg>
