@@ -105,6 +105,40 @@ fun ModalStatisticsTask(
                     Spacer(Modifier.width(8.dp))
                     Text("Streak: ${streaks.value}", fontSize = 12.sp)
                 }
+                task?.let { currentTask ->
+                    val nextTrigger = computeNextTriggerMillis(
+                        lastTriggerMillis = currentTask.lastCompleted,
+                        freqType = currentTask.frequency,
+                        freqValue = currentTask.frequencyValue,
+                        dayOfWeek = currentTask.day,
+                        time = currentTask.time
+                    )
+                    val now = System.currentTimeMillis()
+                    val diffMillis = nextTrigger - now
+                    val instant = Instant.ofEpochMilli(nextTrigger)
+                    val localDateTime = instant.atZone(ZoneId.systemDefault()).toLocalDateTime()
+                    val displayDate = localDateTime.format(
+                        DateTimeFormatter.ofPattern(
+                            "EEE dd MMM yyyy HH:mm",
+                            Locale.getDefault()
+                        )
+                    )
+                    val totalMinutes = diffMillis / (1000 * 60)
+                    val days = totalMinutes / (24 * 60)
+                    val hours = (totalMinutes % (24 * 60)) / 60
+                    val minutes = totalMinutes % 60;
+                    val timeUntil = when {
+                        hours > 0 -> "$hours uur $minutes min"
+                        else -> "$minutes minuten"
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconSlot {
+                            Text("⏰", fontSize = 24.sp)
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Text(if(days <= 0 && hours <= 5) "Volgende over $timeUntil" else "Volgende: $displayDate uur", fontSize = 12.sp)
+                    }
+                }
 
                 if (lastCompletedMillis != null) {
                     val instant = Instant.ofEpochMilli(lastCompletedMillis!!)
