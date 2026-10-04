@@ -7,6 +7,9 @@ import com.zenodotus.ringer.database.Task
 import com.zenodotus.ringer.database.dao.TaskDao
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class TaskRepository(private val taskDao: TaskDao, private val alarmScheduler: AlarmScheduler) {
 
@@ -23,7 +26,7 @@ class TaskRepository(private val taskDao: TaskDao, private val alarmScheduler: A
                     lastTriggerMillis = null,
                     updatedTask.frequency,
                     updatedTask.frequencyValue,
-                    updatedTask.day,
+                    updatedTask.startDate,
                     updatedTask.time
                 )
                 alarmScheduler.scheduleAlarm(
@@ -47,7 +50,7 @@ class TaskRepository(private val taskDao: TaskDao, private val alarmScheduler: A
                     lastTriggerMillis = task.lastCompleted,
                     freqType = task.frequency,
                     freqValue = task.frequencyValue,
-                    dayOfWeek = task.day,
+                    date = task.startDate,
                     time = task.time
                 )
 
@@ -88,7 +91,7 @@ class TaskRepository(private val taskDao: TaskDao, private val alarmScheduler: A
     }
 
     private fun hasAlarmChanged(old: Task, new: Task): Boolean {
-        return old.day != new.day ||
+        return old.startDate.dayOfWeek != new.startDate.dayOfWeek ||
                 old.time != new.time ||
                 old.frequency != new.frequency ||
                 old.frequencyValue != new.frequencyValue
@@ -118,6 +121,11 @@ class TaskRepository(private val taskDao: TaskDao, private val alarmScheduler: A
         val task = taskDao.getTaskById(taskId) ?: return
         alarmScheduler.cancelAlarm(taskId)
         val newTriggerTime = System.currentTimeMillis() + minutes * 60 * 1000
+        val dateTime = SimpleDateFormat(
+            "dd-MM-yyyy HH:mm:ss",
+            Locale.getDefault()
+        ).format(Date(newTriggerTime))
+        Log.d("app", "Snoozetime: $dateTime")
         addAlarm(task, newTriggerTime, true)
     }
 
@@ -134,7 +142,7 @@ class TaskRepository(private val taskDao: TaskDao, private val alarmScheduler: A
                 lastTriggerMillis = baseTrigger,
                 freqType = task.frequency,
                 freqValue = task.frequencyValue,
-                dayOfWeek = task.day,
+                date = task.startDate,
                 time = task.time
             )
         }

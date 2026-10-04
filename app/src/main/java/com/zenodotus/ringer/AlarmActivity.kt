@@ -116,7 +116,7 @@ class AlarmActivity : ComponentActivity() {
                         }
                     }
                 }
-                AlarmSoundManager.stop()
+                AlarmSoundManager.stop(taskId);
                 viewModel.resetSnooze(task.taskId)
                 finish()
             }
@@ -130,8 +130,9 @@ class AlarmActivity : ComponentActivity() {
                     else
                         colorSettingsViewModel.snoozeTime.value
                 viewModel.snoozeTask(task.taskId, snoozeTime)
+                Log.d("app", "Snoozetime: $viewModel.")
                 viewModel.incrementSnooze(task.taskId)
-                AlarmSoundManager.stop()
+                AlarmSoundManager.stop(taskId);
                 finish()
             }
 
@@ -140,7 +141,7 @@ class AlarmActivity : ComponentActivity() {
                 nm.cancel(taskId)
                 viewModel.markTaskAsFailed(task.taskId)
                 viewModel.resetSnooze(task.taskId)
-                AlarmSoundManager.stop()
+                AlarmSoundManager.stop(taskId);
                 finish()
             }
 
@@ -181,7 +182,7 @@ class AlarmActivity : ComponentActivity() {
             viewModel.snoozeTask(task.taskId, snoozeTime)
             viewModel.incrementSnooze(task.taskId)
         }
-        AlarmSoundManager.stop()
+        AlarmSoundManager.stop(taskId)
     }
 
     // 2. Optioneel: Wordt aangeroepen als de gebruiker op de Home-knop drukt
@@ -206,7 +207,7 @@ class AlarmActivity : ComponentActivity() {
             viewModel.snoozeTask(task.taskId, snoozeTime)
             viewModel.incrementSnooze(task.taskId)
         }
-        AlarmSoundManager.stop()
+        AlarmSoundManager.stop(taskId)
     }
 
     // 3. Zorg dat de Back-button ook het geluid stopt
@@ -231,7 +232,7 @@ class AlarmActivity : ComponentActivity() {
             viewModel.snoozeTask(task.taskId, snoozeTime)
             viewModel.incrementSnooze(task.taskId)
         }
-        AlarmSoundManager.stop()
+        AlarmSoundManager.stop(taskId)
     }
 }
 
@@ -334,19 +335,17 @@ fun computeNextTriggerMillis(
     lastTriggerMillis: Long? = null,
     freqType: String,
     freqValue: Int,
-    dayOfWeek: Int? = null, // 1 = maandag ... 7 = zondag of maand/jaar index
+    date: LocalDate? = null, // 1 = maandag ... 7 = zondag of maand/jaar index
     time: LocalTime? = null
 ): Long {
     val zone = ZoneId.systemDefault()
     val now = LocalDateTime.now()
-    Log.d("app", "day of week: $dayOfWeek")
     // 1. Basisdatum
     var base = lastTriggerMillis?.let {
         Log.d("app", "lastrigger gebruikt!")
         Instant.ofEpochMilli(it).atZone(zone).toLocalDateTime()
-    } ?: dayOfWeek?.let {
-        Log.d("app", "dayofweek gebruikt!")
-        now.with(ChronoField.DAY_OF_WEEK, it.toLong())
+    } ?: date?.let {
+        it.atTime(now.toLocalTime());
     } ?: now
 
     val formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss")
@@ -358,11 +357,11 @@ fun computeNextTriggerMillis(
     }
 
     // 3. Day-of-week / maand / jaar aanpassen
-    if (dayOfWeek != null) {
+    if (date != null) {
         when (freqType) {
             "Eenmalig", "Wekelijks" -> {
                 val todayDow = base.dayOfWeek.value
-                var diff = (dayOfWeek - todayDow).let { if (it < 0) it + 7 else it }
+                var diff = (date.dayOfWeek.value - todayDow).let { if (it < 0) it + 7 else it }
                 // Alleen naar volgende week als de tijd van vandaag al gepasseerd is
                 if (diff == 0 && base.isBefore(now)) diff = 7
                 base = base.plusDays(diff.toLong())

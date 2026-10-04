@@ -20,7 +20,7 @@ import kotlinx.coroutines.launch
 @Database(
     entities = [User::class, UserSetting::class, UserBadge::class, Task::class, Medal::class,
         Trophy::class],
-    version = 20
+    version = 21
 )
 
 

@@ -133,7 +133,9 @@ import kotlinx.coroutines.launch
 import java.io.IOException
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 
 class MainActivity : ComponentActivity() {
@@ -164,7 +166,15 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(
+                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                1001
+            )
+        }
         val dao = AppDatabase.getDatabase(this).taskDao()
         val medalDao = AppDatabase.getDatabase(this).medalDao()
         alarmScheduler = AlarmScheduler(this)
@@ -912,8 +922,11 @@ fun TaskItem(
 
             Column(modifier = Modifier.weight(1f)) {
                 TaskWithBadge(task, trophy)
+                val dayName = task.startDate.format(
+                    DateTimeFormatter.ofPattern("EEEE", Locale.getDefault())
+                ).uppercase(Locale.getDefault())
                 Text(
-                    text = "${dayNumberToName(task.day)}, ${
+                    text = "${dayName}, ${
                         task.time.format(
                             DateTimeFormatter.ofPattern(
                                 "HH:mm"
@@ -1070,12 +1083,13 @@ fun AddTask(
     var task by remember { mutableStateOf(taskToEdit?.task ?: "") }
     var selectedFrequency by remember { mutableStateOf(taskToEdit?.frequency ?: "Dagelijks") }
     var frequencyValue by remember { mutableStateOf(taskToEdit?.frequencyValue ?: 0) }
-    var selectedDay by remember {
+    /*var selectedDay by remember {
         mutableStateOf(
             taskToEdit?.day ?: LocalDate.now().dayOfWeek.value
         )
-    }
+    }*/
     var timeText by remember { mutableStateOf(taskToEdit?.time ?: LocalTime.now()) }
+    var dateText by remember { mutableStateOf(taskToEdit?.startDate ?: LocalDate.now())}
     var expanded by remember { mutableStateOf(false) }
     var expandedDay by remember { mutableStateOf(false) }
     var showPicto by remember { mutableStateOf(false) }
@@ -1083,7 +1097,7 @@ fun AddTask(
     val userPrefs = UserPreferences(LocalContext.current)
     //val ringtoneUri: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
     //val ringtone: Ringtone = RingtoneManager.getRingtone(context, ringtoneUri)
-    val dayNames = listOf(
+    /*val dayNames = listOf(
         "Maandag",
         "Dinsdag",
         "Woensdag",
@@ -1092,7 +1106,7 @@ fun AddTask(
         "Zaterdag",
         "Zondag"
     )
-    val selectedDayText = dayNames[selectedDay - 1]
+    val selectedDayText = dayNames[selectedDay - 1]*/
 
     val scope = rememberCoroutineScope()
 
@@ -1142,7 +1156,7 @@ fun AddTask(
                     }
                 )
 
-                ExposedDropdownMenuBox(
+                /*ExposedDropdownMenuBox(
                     expanded = expandedDay,
                     onExpandedChange = { expandedDay = it },
                     modifier = Modifier.background(Color.Transparent)
@@ -1162,147 +1176,141 @@ fun AddTask(
                             focusedLabelColor = MaterialTheme.colorScheme.primary,
                             cursorColor = MaterialTheme.colorScheme.primary
                         )
+                    )*/
+
+                    DatePickerField(
+                        date = dateText,
+                        onDateChange = { newDate -> dateText = newDate }
                     )
-
-                    ExposedDropdownMenu(
-                        expanded = expandedDay,
-                        onDismissRequest = { expandedDay = false }
-                    ) {
-                        dayNames.forEachIndexed { index, name ->
-                            DropdownMenuItem(
-                                onClick = {
-                                    selectedDay = index + 1
-                                    expandedDay = false
-                                },
-                                text = { Text(name) })
-                        }
-                    }
-                }
-                TimePickerField(
-                    tijd = timeText,
-                    onTimeChange = { newTime -> timeText = newTime }
-                )
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    ExposedDropdownMenuBox(
-                        expanded = expanded,
-                        onExpandedChange = { expanded = it },
-
-                        ) {
-                        TextField(
-                            value = selectedFrequency,
-                            onValueChange = { selectedFrequency = it },
-                            readOnly = true,
-                            label = { Text("Frequentie") },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .menuAnchor(type = MenuAnchorType.PrimaryEditable, enabled = true),
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
-                                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                                focusedLabelColor = MaterialTheme.colorScheme.primary,
-                                cursorColor = MaterialTheme.colorScheme.primary
-                            )
-                        )
-                        ExposedDropdownMenu(
+                    TimePickerField(
+                        tijd = timeText,
+                        onTimeChange = { newTime -> timeText = newTime }
+                    )
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        ExposedDropdownMenuBox(
                             expanded = expanded,
-                            onDismissRequest = { expanded = false }
-                        ) {
-                            listOf(
-                                "Eenmalig",
-                                "Dagelijks",
-                                "Wekelijks",
-                                "Maandelijks",
-                                "Jaarlijks",
-                                "Aangepast"
-                            ).forEach { option ->
-                                DropdownMenuItem(
-                                    onClick = {
-                                        selectedFrequency = option
-                                        expanded = false
-                                    },
-                                    text = { Text(option) }
+                            onExpandedChange = { expanded = it },
+
+                            ) {
+                            TextField(
+                                value = selectedFrequency,
+                                onValueChange = { selectedFrequency = it },
+                                readOnly = true,
+                                label = { Text("Frequentie") },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor(
+                                        type = MenuAnchorType.PrimaryEditable,
+                                        enabled = true
+                                    ),
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                    focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                    cursorColor = MaterialTheme.colorScheme.primary
                                 )
-                            }
-                        }
-                    }
-
-                    if (selectedFrequency == "Aangepast") {
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        OutlinedTextField(
-                            value = if (frequencyValue > 0) frequencyValue.toString() else "",
-                            onValueChange = { input ->
-                                frequencyValue = input.toIntOrNull()?.coerceAtLeast(1) ?: 0
-                            },
-                            label = { Text("Aantal dagen") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
-
-
-                Row(
-                    horizontalArrangement = Arrangement.End,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    TextButton(onClick = { onDismiss() }) {
-                        Text("Annuleer")
-                    }
-                    if (taskToEdit == null) {
-                        Button(onClick = {
-                            scope.launch {
-                                val newTask = Task(
-                                    task = task,
-                                    picto = selectedPicto,
-                                    day = selectedDay,
-                                    time = timeText,
-                                    frequency = selectedFrequency,
-                                    frequencyValue = if (selectedFrequency == "Aangepast") frequencyValue else 0,
-                                    assignedToUserName = userPrefs.getUsername()!!
-                                )
-                                val taskWithId = viewModel.addTask(newTask)
-                                if (taskWithId.frequency != "Eenmalig" && (taskWithId.frequencyValue == 0 || taskWithId.frequencyValue > 1)) {
-                                    trophyViewModel.awardTrophy(
-                                        userPrefs.getUsername()!!,
-                                        taskWithId.taskId,
-                                        "streak",
-                                        "INIT_STREAK",
-                                        0
+                            )
+                            ExposedDropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false }
+                            ) {
+                                listOf(
+                                    "Eenmalig",
+                                    "Dagelijks",
+                                    "Wekelijks",
+                                    "Maandelijks",
+                                    "Jaarlijks",
+                                    "Aangepast"
+                                ).forEach { option ->
+                                    DropdownMenuItem(
+                                        onClick = {
+                                            selectedFrequency = option
+                                            expanded = false
+                                        },
+                                        text = { Text(option) }
                                     )
-
                                 }
-
-                                //ringtone.play()
-                                onDismiss()
                             }
-                        }) {
-                            Text("Opslaan")
                         }
-                    } else {
-                        Button(onClick = {
-                            scope.launch {
-                                val updatedTask = taskToEdit.copy(
-                                    task = task,
-                                    picto = selectedPicto,
-                                    day = selectedDay,
-                                    time = timeText,
-                                    frequency = selectedFrequency,
-                                    frequencyValue = if (selectedFrequency == "Aangepast") frequencyValue else 0,
-                                    assignedToUserName = userPrefs.getUsername()!!
-                                )
-                                viewModel.updateTask(updatedTask)
-                                //ringtone.play()
-                                onDismiss()
+
+                        if (selectedFrequency == "Aangepast") {
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            OutlinedTextField(
+                                value = if (frequencyValue > 0) frequencyValue.toString() else "",
+                                onValueChange = { input ->
+                                    frequencyValue = input.toIntOrNull()?.coerceAtLeast(1) ?: 0
+                                },
+                                label = { Text("Aantal dagen") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+
+
+                    Row(
+                        horizontalArrangement = Arrangement.End,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        TextButton(onClick = { onDismiss() }) {
+                            Text("Annuleer")
+                        }
+                        if (taskToEdit == null) {
+                            Button(onClick = {
+                                scope.launch {
+                                    val newTask = Task(
+                                        task = task,
+                                        picto = selectedPicto,
+                                        startDate = dateText,
+                                        time = timeText,
+                                        frequency = selectedFrequency,
+                                        frequencyValue = if (selectedFrequency == "Aangepast") frequencyValue else 0,
+                                        assignedToUserName = userPrefs.getUsername()!!
+                                    )
+                                    val taskWithId = viewModel.addTask(newTask)
+                                    if (taskWithId.frequency != "Eenmalig" && (taskWithId.frequencyValue == 0 || taskWithId.frequencyValue > 1)) {
+                                        trophyViewModel.awardTrophy(
+                                            userPrefs.getUsername()!!,
+                                            taskWithId.taskId,
+                                            "streak",
+                                            "INIT_STREAK",
+                                            0
+                                        )
+
+                                    }
+
+                                    //ringtone.play()
+                                    onDismiss()
+                                }
+                            }) {
+                                Text("Opslaan")
                             }
-                        }) {
-                            Text("Aanpassen")
+                        } else {
+                            Button(onClick = {
+                                scope.launch {
+                                    val updatedTask = taskToEdit.copy(
+                                        task = task,
+                                        picto = selectedPicto,
+                                        startDate = dateText,
+                                        time = timeText,
+                                        frequency = selectedFrequency,
+                                        frequencyValue = if (selectedFrequency == "Aangepast") frequencyValue else 0,
+                                        assignedToUserName = userPrefs.getUsername()!!
+                                    )
+                                    viewModel.updateTask(updatedTask)
+                                    //ringtone.play()
+                                    onDismiss()
+                                }
+                            }) {
+                                Text("Aanpassen")
+                            }
                         }
                     }
                 }
             }
         }
-    }
+
     if (showPicto) {
         PictoSelectorModal(
             onSelect = { fileName ->
@@ -1313,106 +1321,6 @@ fun AddTask(
     }
 }
 
-@Composable
-fun TimePickerField(
-    tijd: LocalTime,
-    onTimeChange: (LocalTime) -> Unit
-) {
-    var timeText by remember { mutableStateOf(tijd.format(DateTimeFormatter.ofPattern("HH:mm"))) }
-    var showDialog by remember { mutableStateOf(false) }
-    val focusManager = LocalFocusManager.current
-
-    OutlinedTextField(
-        value = timeText,
-        onValueChange = { timeText = it },
-        label = { Text("Tijd") },
-        readOnly = true,
-        modifier = Modifier
-            .onFocusChanged { focusState ->
-                if (focusState.isFocused) {
-                    showDialog = true
-                    focusManager.clearFocus()
-                }
-            }
-    )
-
-    if (showDialog) {
-        TimePickerModal(
-            onConfirm = { hour, minute ->
-                val newTime = LocalTime.of(hour, minute)
-                timeText = newTime.format(DateTimeFormatter.ofPattern("HH:mm"))
-                onTimeChange(newTime)  // <-- geef de nieuwe tijd terug
-                showDialog = false
-            },
-            onDismiss = { showDialog = false }
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun TimePickerModal(
-    onConfirm: (Int, Int) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val currentTime = LocalTime.now()
-    val timePickerState = rememberTimePickerState(
-        initialHour = currentTime.hour,
-        initialMinute = currentTime.minute,
-        is24Hour = true
-    )
-
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            tonalElevation = 6.dp
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                TimePicker(
-                    state = timePickerState,
-                    colors = TimePickerDefaults.colors(
-                        clockDialColor = MaterialTheme.colorScheme.surface,
-                        clockDialSelectedContentColor = MaterialTheme.colorScheme.onPrimary,
-                        clockDialUnselectedContentColor = MaterialTheme.colorScheme.onSurface,
-
-                        selectorColor = MaterialTheme.colorScheme.primary,
-
-                        containerColor = MaterialTheme.colorScheme.surface,
-
-                        periodSelectorBorderColor = MaterialTheme.colorScheme.outline,
-                        periodSelectorSelectedContainerColor = MaterialTheme.colorScheme.primary,
-                        periodSelectorUnselectedContainerColor = MaterialTheme.colorScheme.surface,
-                        periodSelectorSelectedContentColor = MaterialTheme.colorScheme.onPrimary,
-                        periodSelectorUnselectedContentColor = MaterialTheme.colorScheme.onSurface,
-
-                        timeSelectorSelectedContainerColor = MaterialTheme.colorScheme.primary,
-                        timeSelectorUnselectedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        timeSelectorSelectedContentColor = MaterialTheme.colorScheme.onPrimary,
-                        timeSelectorUnselectedContentColor = MaterialTheme.colorScheme.onSurface
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Button(onClick = onDismiss) {
-                        Text("Annuleer")
-                    }
-                    Button(onClick = {
-                        onConfirm(timePickerState.hour, timePickerState.minute)
-                    }) {
-                        Text("OK")
-                    }
-                }
-            }
-        }
-    }
-}
 
 
 @OptIn(ExperimentalMaterial3Api::class)

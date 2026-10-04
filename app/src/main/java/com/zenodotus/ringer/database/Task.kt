@@ -5,6 +5,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.io.Serializable
+import java.time.LocalDate
 import java.time.LocalTime
 
 @Entity(
@@ -23,7 +24,7 @@ data class Task(
     @PrimaryKey(autoGenerate = true) val taskId: Int = 0,
     val task: String,
     val picto: String?,
-    val day: Int,
+    val startDate: LocalDate,
     val time: LocalTime,
     val frequency: String,
     val frequencyValue: Int,

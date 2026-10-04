@@ -18,6 +18,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,10 +32,12 @@ import com.zenodotus.ringer.data.UserPreferences
 import com.zenodotus.ringer.viewmodels.MedalViewModel
 import com.zenodotus.ringer.viewmodels.TaskViewModel
 import com.zenodotus.ringer.viewmodels.TrophyViewModel
+import kotlinx.coroutines.delay
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import androidx.compose.runtime.setValue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,6 +49,7 @@ fun ModalStatisticsTask(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
+    var timeUntil by remember {mutableStateOf("")}
     val task by viewModel.findTaskByIdFlow(taskId).collectAsState(null)
     val userPrefs = UserPreferences(LocalContext.current)
     val medalsPerTask = medalViewModel.medalsOfTask.collectAsState()
@@ -105,38 +110,67 @@ fun ModalStatisticsTask(
                     Spacer(Modifier.width(8.dp))
                     Text("Streak: ${streaks.value}", fontSize = 12.sp)
                 }
-                task?.let { currentTask ->
-                    val nextTrigger = computeNextTriggerMillis(
-                        lastTriggerMillis = currentTask.lastCompleted,
+                if (task != null) {
+                    val currentTask = task;
+                    var nextTrigger = computeNextTriggerMillis(
+                        lastTriggerMillis = currentTask!!.lastCompleted,
                         freqType = currentTask.frequency,
                         freqValue = currentTask.frequencyValue,
-                        dayOfWeek = currentTask.day,
+                        date = currentTask.startDate,
                         time = currentTask.time
                     )
-                    val now = System.currentTimeMillis()
-                    val diffMillis = nextTrigger - now
-                    val instant = Instant.ofEpochMilli(nextTrigger)
-                    val localDateTime = instant.atZone(ZoneId.systemDefault()).toLocalDateTime()
-                    val displayDate = localDateTime.format(
-                        DateTimeFormatter.ofPattern(
-                            "EEE dd MMM yyyy HH:mm",
-                            Locale.getDefault()
-                        )
-                    )
-                    val totalMinutes = diffMillis / (1000 * 60)
-                    val days = totalMinutes / (24 * 60)
-                    val hours = (totalMinutes % (24 * 60)) / 60
-                    val minutes = totalMinutes % 60;
-                    val timeUntil = when {
-                        hours > 0 -> "$hours uur $minutes min"
-                        else -> "$minutes minuten"
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconSlot {
-                            Text("⏰", fontSize = 24.sp)
+                    LaunchedEffect(Unit) {
+                        while(true) {
+                            val now = System.currentTimeMillis()
+                            var diffMillis = nextTrigger - now
+                            if (diffMillis <= 0) {
+                                nextTrigger = computeNextTriggerMillis(
+                                    lastTriggerMillis = currentTask.lastCompleted,
+                                    freqType = currentTask.frequency,
+                                    freqValue = currentTask.frequencyValue,
+                                    date = currentTask.startDate,
+                                    time = currentTask.time
+                                )
+                                diffMillis = nextTrigger - System.currentTimeMillis()
+                            }
+                            val instant = Instant.ofEpochMilli(nextTrigger)
+                            val localDateTime =
+                                instant.atZone(ZoneId.systemDefault()).toLocalDateTime()
+                            val displayDate = localDateTime.format(
+                                DateTimeFormatter.ofPattern(
+                                    "EEE dd MMM yyyy HH:mm",
+                                    Locale.getDefault()
+                                )
+                            )
+                            val totalMinutes = diffMillis / (1000 * 60)
+                            val totalSeconds = diffMillis / 1000
+                            val days = totalMinutes / (24 * 60)
+                            val hours = (totalMinutes % (24 * 60)) / 60
+                            val minutes = totalMinutes % 60
+                            val seconds = totalSeconds % 60
+                            timeUntil = if (days <= 0 && hours <= 5) {
+                                val text = when {
+                                    hours > 0 -> "$hours uur $minutes min"
+                                    minutes > 0 -> "$minutes ${if (minutes != 1L) "minuten" else "minuut"}"
+                                    else -> "$seconds ${if (seconds != 1L) "seconden" else "seconde"}"
+                                }
+                                "Volgende over $text"
+                            } else {
+                                "Volgende: $displayDate uur"
+                            }
+                            delay(1000)
                         }
-                        Spacer(Modifier.width(8.dp))
-                        Text(if(days <= 0 && hours <= 5) "Volgende over $timeUntil" else "Volgende: $displayDate uur", fontSize = 12.sp)
+                    }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconSlot {
+                                Text("⏰", fontSize = 24.sp)
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                timeUntil,
+                                fontSize = 12.sp
+                            )
+
                     }
                 }
 

@@ -14,6 +14,7 @@ import android.net.Uri
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.net.toUri
 import com.zenodotus.ringer.data.dataStore
 import com.zenodotus.ringer.database.AppDatabase
@@ -30,7 +31,7 @@ class AlarmReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val taskId = intent.getIntExtra("taskId", -1)
-        val title = intent.getStringExtra("title") ?: "Alarm"
+        var title = intent.getStringExtra("title") ?: "Alarm"
         val message = intent.getStringExtra("message") ?: "Het is tijd!"
 
         CoroutineScope(Dispatchers.IO).launch {
@@ -55,7 +56,7 @@ class AlarmReceiver : BroadcastReceiver() {
                 val db = AppDatabase.getDatabase(context)
                 val repository = TaskRepository(db.taskDao(), AlarmScheduler(context))
                 val task = repository.getTaskById(taskId)
-
+                title = task?.task ?: "Alarm";
                 if (task != null && task.frequency != "Eenmalig") {
                     repository.addAlarm(task, System.currentTimeMillis(), false)
                 }
@@ -97,13 +98,23 @@ class AlarmReceiver : BroadcastReceiver() {
                     .setFullScreenIntent(pendingIntent, true)
                     .build()
 
+                Log.d("RINGER_ALARM", "NOTIFY: $taskId")
+                Log.d(
+                    "RINGER_ALARM",
+                    "Notifications enabled: ${NotificationManagerCompat.from(context).areNotificationsEnabled()}"
+                )
+                Log.d(
+                    "RINGER_ALARM",
+                    "Channel: ${notificationManager.getNotificationChannel(channelId)?.importance}"
+                )
                 notificationManager.notify(taskId, notification)
                 context.startActivity(activityIntent)
+
 
                 if (soundEnabled) {
                     withContext(Dispatchers.Main) {
 
-                        AlarmSoundManager.stop()
+                        //AlarmSoundManager.stop()
 
                         val mediaPlayer = MediaPlayer().apply {
                             setDataSource(context, soundUri)
@@ -120,7 +131,7 @@ class AlarmReceiver : BroadcastReceiver() {
                             start()
                         }
 
-                        AlarmSoundManager.mediaPlayer = mediaPlayer
+                        AlarmSoundManager.play(taskId, mediaPlayer);
                     }
                 }
 
