@@ -3,9 +3,12 @@ package com.zenodotus.ringer.database.repositories
 import android.util.Log
 import com.zenodotus.ringer.AlarmScheduler
 import com.zenodotus.ringer.computeNextTriggerMillis
+import com.zenodotus.ringer.data.UserPreferences
 import com.zenodotus.ringer.database.Task
 import com.zenodotus.ringer.database.dao.TaskDao
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.forEach
 import kotlinx.coroutines.flow.map
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -40,7 +43,11 @@ class TaskRepository(private val taskDao: TaskDao, private val alarmScheduler: A
     }
 
     fun getTasks(userName: String): Flow<List<Task>> {
-        return taskDao.getTasks(userName).map { dbTasks ->
+        return taskDao.getTasks(userName)
+    }
+
+    fun triggerAlarms(activeTasks: Flow<List<Task>>): Flow<List<Task>> {
+        return activeTasks.map { dbTasks ->
             // 1. Filter de gearchiveerde taken eruit voor de UI
             val actieveTaken = dbTasks
 
@@ -58,10 +65,9 @@ class TaskRepository(private val taskDao: TaskDao, private val alarmScheduler: A
                     addAlarm(task, nextTrigger)
                 }
             }
-
-            // 3. Geef de GEFILTERDE lijst terug aan de ViewModel
             actieveTaken
         }
+
     }
 
     suspend fun addTask(task: Task): Task {
@@ -132,6 +138,7 @@ class TaskRepository(private val taskDao: TaskDao, private val alarmScheduler: A
     suspend fun rescheduleAlarm(taskid: Int) {
         val task = taskDao.getTaskById(taskid) ?: return
     }
+
 
     fun addAlarm(task: Task, lastTriggerMillis: Long? = null, snooze: Boolean? = false) {
         val baseTrigger = lastTriggerMillis

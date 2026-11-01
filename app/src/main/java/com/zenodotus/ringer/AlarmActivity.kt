@@ -163,6 +163,7 @@ class AlarmActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        Log.d("RINGER_ALARM", "AlarmActivity onDestroy: ${System.currentTimeMillis()}")
         val taskId = intent.getIntExtra("taskId", 0)
         lifecycleScope.launch {
             val task = viewModel.findTaskById(taskId)

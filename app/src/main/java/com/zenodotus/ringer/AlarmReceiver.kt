@@ -33,7 +33,7 @@ class AlarmReceiver : BroadcastReceiver() {
         val taskId = intent.getIntExtra("taskId", -1)
         var title = intent.getStringExtra("title") ?: "Alarm"
         val message = intent.getStringExtra("message") ?: "Het is tijd!"
-
+        Log.d("RINGER_ALARM", "1. Receiver gestart: ${System.currentTimeMillis()}")
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val data = context.dataStore.data.first()
@@ -98,15 +98,6 @@ class AlarmReceiver : BroadcastReceiver() {
                     .setFullScreenIntent(pendingIntent, true)
                     .build()
 
-                Log.d("RINGER_ALARM", "NOTIFY: $taskId")
-                Log.d(
-                    "RINGER_ALARM",
-                    "Notifications enabled: ${NotificationManagerCompat.from(context).areNotificationsEnabled()}"
-                )
-                Log.d(
-                    "RINGER_ALARM",
-                    "Channel: ${notificationManager.getNotificationChannel(channelId)?.importance}"
-                )
                 notificationManager.notify(taskId, notification)
                 context.startActivity(activityIntent)
 
@@ -128,6 +119,7 @@ class AlarmReceiver : BroadcastReceiver() {
 
                             isLooping = nonStop
                             prepare()
+                            Log.d("RINGER_ALARM", "2. MediaPlayer start: ${System.currentTimeMillis()}")
                             start()
                         }
 

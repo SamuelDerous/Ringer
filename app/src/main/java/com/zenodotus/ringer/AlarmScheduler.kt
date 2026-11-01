@@ -28,8 +28,6 @@ class AlarmScheduler(private val context: Context) {
             putExtra("frequencyValue", frequencyValue)
         }
 
-        val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault())
-        val datum = sdf.format(Date(triggerAtMillis))
         val pendingIntent = PendingIntent.getBroadcast(
             context,
             taskId,
@@ -37,31 +35,28 @@ class AlarmScheduler(private val context: Context) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val alarmManager =
+            context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            // Android 12+: check of exact alarms toegestaan zijn
-            if (alarmManager.canScheduleExactAlarms()) {
-                alarmManager.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    triggerAtMillis,
-                    pendingIntent
-                )
-            } else {
-                // stuur gebruiker naar instellingen om toestemming te geven
-                val intentSettings = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
-                intentSettings.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                context.startActivity(intentSettings)
-            }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            !alarmManager.canScheduleExactAlarms()
+        ) {
+            alarmManager.setAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                triggerAtMillis,
+                pendingIntent
+            )
+            //Log.w("app", "Gewoon alarm ingepland wegens ontbrekende exact-alarmtoestemming")
         } else {
-            // ouder dan Android 12
             alarmManager.setExactAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
                 triggerAtMillis,
                 pendingIntent
             )
+            //Log.d("app", "Exact alarm ingepland voor: ${Date(triggerAtMillis)}")
         }
     }
+
 
     fun cancelAlarm(taskId: Int) {
         val intent = Intent(context, AlarmReceiver::class.java).apply {
